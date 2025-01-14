@@ -30,7 +30,6 @@ export default function App() {
 
   const workerRef = useRef<Worker>();
 
-
   const initializeModel = () => {
     if (!workerRef.current) return;
 
@@ -125,6 +124,7 @@ export default function App() {
     };
   }, []);
 
+  // Initialize the model when the selected model or quantization changes
   useEffect(() => {
     initializeModel();
   }, [selectedModel, selectedQuantization]);
@@ -139,20 +139,14 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+
+    setMessages(updatedMessages);
     setDisabled(true);
 
     if (workerRef.current) {
-      // Format the conversation history for the model
-      const conversationHistory = messages.concat(userMessage)
-        .map(msg => `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`)
-        .join('\n');
-
-      const prompt = `${conversationHistory}\nAssistant:`;
-
       workerRef.current.postMessage({
-        text: prompt,
-        model: selectedModel
+        messages: updatedMessages.map(message => ({ role: message.role, content: message.content })),
       });
     }
 

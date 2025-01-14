@@ -1,24 +1,56 @@
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, AutoTokenizer, AutoModelForCausalLM } from '@huggingface/transformers';
 
 export class ChatPipeline {
     static model = 'HuggingFaceTB/SmolLM2-135M-Instruct';
-    static dtype = 'fp32';
+    static dtype = 'q4';
     static instance = null;
+    static tokenizer = null;
 
     static async getInstance(model = this.model, dtype = this.dtype, progress_callback = undefined) {
         if (this.instance === null || this.model !== model || this.dtype !== dtype) {
-            console.log("Creating new pipeline instance for model: ", model, " with dtype: ", dtype);
-            this.instance = await pipeline('text-generation', model, {
+            console.log("Creating new model instance for: ", model);
+            this.tokenizer = await AutoTokenizer.from_pretrained(model, {
+                progress_callback
+            });
+            this.instance = await AutoModelForCausalLM.from_pretrained(model, {
                 progress_callback,
-                dtype: dtype
+                dtype: dtype,
+                device: 'webgpu'
             });
         }
-
-        return this.instance;
+        return { model: this.instance, tokenizer: this.tokenizer };
     }
 
     static reset() {
         this.instance = null;
+        this.tokenizer = null;
+    }
+
+    static async generate(messages, params = {}) {
+        console.log("Generating response for messages: ", messages);
+        const { model, tokenizer } = await this.getInstance();
+        if (!model || !tokenizer) {
+            throw new Error('Failed to get model or tokenizer instance');
+        }
+
+        const input_tokens = tokenizer.apply_chat_template(messages, { tokenize: true });
+        console.log("Input tokens: ", input_tokens);
+
+        const outputs = await model.generate(input_tokens, {
+            max_new_tokens: 256,
+            temperature: 0.7,
+            do_sample: true,
+            top_p: 0.95,
+            ...params
+        });
+
+        const generatedText = await tokenizer.decode(outputs[0]);
+        console.log("Generated text: ", generatedText);
+
+        return {
+            fullResponse: generatedText,
+            assistantResponse: generatedText.slice(input_text.length).trim()
+        };
     }
 }
 
@@ -45,26 +77,8 @@ self.addEventListener('message', async (event) => {
             return;
         }
 
-        if (!event.data.text) {
-            throw new Error('No text property in message data');
-        }
-
-        const textGenerationPipeline = await ChatPipeline.getInstance();
-        console.log("Pipeline instance: ", textGenerationPipeline);
-        if (!textGenerationPipeline) {
-            throw new Error('Failed to get pipeline instance');
-        }
-
-        const response = await textGenerationPipeline(event.data.text, {
-            max_new_tokens: 256,
-            temperature: 0.7,
-            do_sample: true,
-            top_p: 0.95,
-        });
-
-        // Extract just the new assistant response by removing the input prompt
-        const generatedText = response[0].generated_text;
-        const assistantResponse = generatedText.slice(event.data.text.length).trim();
+        const messages = event.data.messages;
+        const { assistantResponse } = await ChatPipeline.generate(messages);
 
         self.postMessage({
             status: 'complete',
