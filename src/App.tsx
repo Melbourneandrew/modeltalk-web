@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import SendIcon from './components/icons/SendIcon';
 import ModelDownloadProgress from './components/ModelDownloadProgress';
-
+import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS } from './lib/model-options';
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -9,62 +9,18 @@ export interface ChatMessage {
 }
 
 export interface ProgressItem {
-  progress: number;
+  progress?: number;
   file: string;
+  loaded?: number;
+  total?: number;
+  status: string;
+  name?: string;
 }
-
-const initialMessages: ChatMessage[] = [
-  {
-    role: 'system',
-    content: 'You are a helpful AI assistant.',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'user',
-    content: 'Hello! How can you help me today?',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'assistant',
-    content: `Hi! I'm Claude. I'm here to assist you with any questions you might have!`,
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'user',
-    content: 'Can you explain quantum computing?',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'assistant',
-    content: 'Quantum computing is a type of computing that uses quantum phenomena such as superposition and entanglement. Unlike classical computers that use bits (0 or 1), quantum computers use quantum bits or qubits that can exist in multiple states simultaneously.',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'user',
-    content: 'That sounds complex! Can you give me a simpler example?',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'assistant',
-    content: 'Think of it like this: while a classical bit is like a coin showing either heads or tails, a qubit is like a spinning coin that\'s simultaneously in both states until you stop it and look at it.This property allows quantum computers to perform certain calculations much faster than classical computers.',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'user',
-    content: 'What are some practical applications?',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-  {
-    role: 'assistant',
-    content: 'Quantum computers could revolutionize fields like cryptography, drug discovery, climate modeling, and optimization problems. For example, they could help design better batteries, create more effective medications, or solve complex logistics challenges much faster than current computers.',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-];
-
-const AVAILABLE_MODELS = ['HuggingFaceTB/SmolLM2-135M-Instruct', 'GPT-4', 'Llama'];
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>('HuggingFaceTB/SmolLM2-135M-Instruct');
+  const [selectedQuantization, setSelectedQuantization] = useState<string>('q4');
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
@@ -72,13 +28,23 @@ export default function App() {
   const [disabled, setDisabled] = useState(false);
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
 
-  // Create worker reference
   const workerRef = useRef<Worker>();
 
+
+  const initializeModel = () => {
+    if (!workerRef.current) return;
+
+    setReady(false);
+    setProgressItems([]);
+
+    workerRef.current.postMessage({
+      type: 'init',
+      model: selectedModel,
+      dtype: selectedQuantization
+    });
+  };
+
   useEffect(() => {
-    // if (messages.length === 0) {
-    //   setMessages(initialMessages);
-    // }
     const onMessageReceived = (e: any) => {
       switch (e.data.status) {
         case 'initiate':
@@ -94,7 +60,7 @@ export default function App() {
           setProgressItems(
             prev => prev.map(item => {
               if (item.file === e.data.file) {
-                return { ...item, progress: e.data.progress }
+                return { ...item, ...e.data }
               }
               return item;
             })
@@ -128,6 +94,16 @@ export default function App() {
         case 'complete':
           // Generation complete: re-enable the "Translate" button
           console.log("complete: ", e.data);
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: e.data.output,
+            timestamp: new Date().toLocaleTimeString(),
+          }]);
+          setDisabled(false);
+          break;
+
+        case 'error':
+          console.error("error: ", e.data);
           setDisabled(false);
           break;
       }
@@ -139,36 +115,43 @@ export default function App() {
     });
 
     workerRef.current = worker;
-
     worker.addEventListener('message', onMessageReceived);
 
-    // Add this line to trigger model loading immediately
-    worker.postMessage({ type: 'init', model: selectedModel });
+    initializeModel();
 
     return () => {
       worker.removeEventListener('message', onMessageReceived);
       worker.terminate();
     };
-  }, []); // Only runs once on mount
+  }, []);
 
-  const handleNewMessage = (event: React.FormEvent) => {
+  useEffect(() => {
+    initializeModel();
+  }, [selectedModel, selectedQuantization]);
+
+  const handleNewUserMessage = (event: React.FormEvent) => {
     event.preventDefault();
     if (!newMessage.trim() || !ready || disabled) return;
 
-    // Add user message to chat
     const userMessage: ChatMessage = {
       role: 'user',
       content: newMessage.trim(),
       timestamp: new Date().toLocaleTimeString(),
     };
-    setMessages(prev => [...prev, userMessage]);
 
-    // Disable input while processing
+    setMessages(prev => [...prev, userMessage]);
     setDisabled(true);
-    // Send message to worker
+
     if (workerRef.current) {
+      // Format the conversation history for the model
+      const conversationHistory = messages.concat(userMessage)
+        .map(msg => `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`)
+        .join('\n');
+
+      const prompt = `${conversationHistory}\nAssistant:`;
+
       workerRef.current.postMessage({
-        text: newMessage.trim(),
+        text: prompt,
         model: selectedModel
       });
     }
@@ -195,37 +178,59 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-amber-50 p-4">
-      {/* Model Selector - Now fixed to top */}
+      {/* Header bar with model selection controls */}
       <div className="fixed top-0 left-0 right-0 p-4 bg-amber-50 z-10">
-        <div className="flex items-center w-full max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-center mr-auto">SmolTalk 😃</h1>
-          <div className="flex items-center justify-end gap-2 w-[500px]">
-            <label htmlFor="model-select" className="text-sm font-medium">Select Model:</label>
-            <select
-              id="model-select"
-              className="select select-bordered w-full max-w-xs border-amber-300 bg-transparent"
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-            >
-              {AVAILABLE_MODELS.map(model => (
-                <option key={model} value={model}>{model}</option>
-              ))}
-            </select>
+        <div className="flex flex-col sm:flex-row items-center w-full max-w-4xl mx-auto gap-4">
+          <h1 className="text-3xl font-bold text-center">SmolTalk 😃</h1>
+          <div className="flex flex-col sm:flex-row items-center gap-4 ml-auto">
+            <div className="flex items-center gap-2">
+              <label htmlFor="model-select" className="text-sm font-medium whitespace-nowrap">Model:</label>
+              <select
+                id="model-select"
+                className="select select-bordered w-[300px] border-amber-300 bg-transparent text-sm"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+              >
+                {AVAILABLE_MODELS.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="quantization-select" className="text-sm font-medium whitespace-nowrap">Quantization:</label>
+              <select
+                id="quantization-select"
+                className="select select-bordered w-[100px] border-amber-300 bg-transparent text-sm"
+                value={selectedQuantization}
+                onChange={(e) => setSelectedQuantization(e.target.value)}
+              >
+                {QUANTIZATION_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Chat Container - Added padding-top to account for fixed header */}
+      {/* Progress indicators for model file downloads */}
+      <ModelDownloadProgress
+        progressItems={progressItems}
+      />
+
+      {/* Main chat container with top padding to account for fixed header */}
       <div className="w-full max-w-4xl mx-auto space-y-4 pt-20">
-        {/* Chat Messages */}
+        {/* Message history */}
         <div className="space-y-4 pb-24">
           {messages.map(renderMessage)}
         </div>
 
-        {/* Input Area - Now fixed to bottom */}
+        {/* Message input form fixed to bottom */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-amber-50">
           <div className="w-full max-w-4xl mx-auto">
-            <form onSubmit={handleNewMessage} autoComplete="off">
+            <form onSubmit={handleNewUserMessage} autoComplete="off">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -248,11 +253,6 @@ export default function App() {
           </div>
         </div>
       </div>
-
-      {/* Model Download Progress */}
-      <ModelDownloadProgress
-        progressItems={progressItems}
-      />
     </div>
   );
 }
