@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import SendIcon from './components/icons/SendIcon';
 import ModelDownloadProgress from './components/ModelDownloadProgress';
 import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS } from './lib/model-options';
@@ -18,8 +18,8 @@ export interface ProgressItem {
 }
 
 export default function App() {
-  const [selectedModel, setSelectedModel] = useState<string>('HuggingFaceTB/SmolLM2-135M-Instruct');
-  const [selectedQuantization, setSelectedQuantization] = useState<string>('q4');
+  const [selectedModel, setSelectedModel] = useState<string>('HuggingFaceTB/SmolLM2-1.7B-Instruct');
+  const [selectedQuantization, setSelectedQuantization] = useState<string>('q4f16');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -29,6 +29,7 @@ export default function App() {
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
 
   const workerRef = useRef<Worker>();
+  const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
 
   const initializeModel = () => {
     if (!workerRef.current) return;
@@ -43,71 +44,76 @@ export default function App() {
     });
   };
 
+  const onMessageReceived = (e: any) => {
+    switch (e.data.status) {
+      case 'initiate': // Start loading model file
+        console.log("initiate: ", e.data);
+        setReady(false);
+        setProgressItems(prev => [...prev, e.data]);
+        break;
+
+      case 'progress': // Model Download Progress
+        setProgressItems(
+          prev => prev.map(item => {
+            if (item.file === e.data.file) {
+              return { ...item, ...e.data }
+            }
+            return item;
+          })
+        );
+        break;
+
+      case 'done': // Model file loaded: remove the progress item from the list.
+        console.log("done: ", e.data);
+        setProgressItems(
+          prev => prev.filter(item => item.file !== e.data.file)
+        );
+        break;
+
+      case 'ready': // Pipeline ready: the worker is ready to accept messages.
+        console.log("ready: ", e.data);
+        setReady(true);
+        break;
+
+      case 'start': // Start streaming response
+        setCurrentStreamingMessage('');
+        break;
+
+      case 'update': // Update streaming response
+        console.log("update: ", e.data);
+        setMessages(prev => {
+          const cloned = [...prev];
+          const last = cloned.at(-1);
+          if (last && last.role === 'assistant') {
+            cloned[cloned.length - 1] = {
+              ...last,
+              content: last.content + e.data.output
+            };
+            return cloned;
+          }
+          return [...prev, {
+            role: 'assistant',
+            content: e.data.output,
+            timestamp: new Date().toLocaleTimeString(),
+          }];
+        });
+        setCurrentStreamingMessage('');
+        break;
+
+      case 'complete': // Streaming response complete: add the response to the messages list.
+        console.log("complete: ", e.data);
+        setDisabled(false);
+        break;
+
+      case 'error': // Error: stop streaming and disable the input field.
+        console.error("error: ", e.data);
+        setDisabled(false);
+        break;
+    }
+  };
+
   useEffect(() => {
-    const onMessageReceived = (e: any) => {
-      switch (e.data.status) {
-        case 'initiate':
-          console.log("initiate: ", e.data);
-          // Model file start load: add a new progress item to the list.
-          setReady(false);
-          setProgressItems(prev => [...prev, e.data]);
-          break;
-
-        case 'progress':
-          console.log("progress: ", e.data);
-          // Model file progress: update one of the progress items.
-          setProgressItems(
-            prev => prev.map(item => {
-              if (item.file === e.data.file) {
-                return { ...item, ...e.data }
-              }
-              return item;
-            })
-          );
-          break;
-
-        case 'done':
-          // Model file loaded: remove the progress item from the list.
-          console.log("done: ", e.data);
-          setProgressItems(
-            prev => prev.filter(item => item.file !== e.data.file)
-          );
-          break;
-
-        case 'ready':
-          // Pipeline ready: the worker is ready to accept messages.
-          console.log("ready: ", e.data);
-          setReady(true);
-          break;
-
-        case 'update':
-          console.log("update: ", e.data);
-          // Generation update: update the output text.
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: e.data.output,
-            timestamp: new Date().toLocaleTimeString(),
-          }]);
-          break;
-
-        case 'complete':
-          // Generation complete: re-enable the "Translate" button
-          console.log("complete: ", e.data);
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: e.data.output,
-            timestamp: new Date().toLocaleTimeString(),
-          }]);
-          setDisabled(false);
-          break;
-
-        case 'error':
-          console.error("error: ", e.data);
-          setDisabled(false);
-          break;
-      }
-    };
-
+    console.log('Worker setup effect running');
     const worker = new Worker(new URL('./lib/worker.js', import.meta.url), {
       type: 'module',
       name: 'chat-pipeline',
@@ -116,7 +122,8 @@ export default function App() {
     workerRef.current = worker;
     worker.addEventListener('message', onMessageReceived);
 
-    initializeModel();
+    // Initial model load
+    // initializeModel();
 
     return () => {
       worker.removeEventListener('message', onMessageReceived);
@@ -124,9 +131,12 @@ export default function App() {
     };
   }, []);
 
-  // Initialize the model when the selected model or quantization changes
+  // Model/quantization changes
   useEffect(() => {
+    console.log('Model/quantization change detected');
+    console.log("Initializing model with: ", selectedModel, selectedQuantization);
     initializeModel();
+    setMessages([]);
   }, [selectedModel, selectedQuantization]);
 
   const handleNewUserMessage = (event: React.FormEvent) => {
@@ -140,17 +150,20 @@ export default function App() {
     };
 
     const updatedMessages = [...messages, userMessage];
-
     setMessages(updatedMessages);
     setDisabled(true);
 
     if (workerRef.current) {
       workerRef.current.postMessage({
-        messages: updatedMessages.map(message => ({ role: message.role, content: message.content })),
+        type: 'generate',
+        data: updatedMessages.map(message => ({
+          role: message.role,
+          content: message.content
+        })),
       });
     }
 
-    setNewMessage(''); // Clear input after sending
+    setNewMessage('');
   };
 
   const renderMessage = (message: ChatMessage, index: number) => {
@@ -175,7 +188,7 @@ export default function App() {
       {/* Header bar with model selection controls */}
       <div className="fixed top-0 left-0 right-0 p-4 bg-amber-50 z-10">
         <div className="flex flex-col sm:flex-row items-center w-full max-w-4xl mx-auto gap-4">
-          <h1 className="text-3xl font-bold text-center">SmolTalk 😃</h1>
+          <h1 className="text-3xl font-bold text-center">Small Talk 😃</h1>
           <div className="flex flex-col sm:flex-row items-center gap-4 ml-auto">
             <div className="flex items-center gap-2">
               <label htmlFor="model-select" className="text-sm font-medium whitespace-nowrap">Model:</label>
@@ -219,6 +232,19 @@ export default function App() {
         {/* Message history */}
         <div className="space-y-4 pb-24">
           {messages.map(renderMessage)}
+          {currentStreamingMessage && (
+            <div className="chat chat-start">
+              <div className="chat-header text-gray-700">
+                {selectedModel}
+                <time className="text-xs opacity-50 ml-2">
+                  {new Date().toLocaleTimeString()}
+                </time>
+              </div>
+              <div className="chat-bubble bg-white !opacity-100 text-black">
+                {currentStreamingMessage}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Message input form fixed to bottom */}
