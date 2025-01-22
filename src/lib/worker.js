@@ -13,18 +13,30 @@ let tokenizerInstance = null;
 let pastKeyValuesCache = null;
 const stoppingCriteria = new InterruptableStoppingCriteria();
 
-export async function getInstance(model = DEFAULT_MODEL, dtype = DEFAULT_DTYPE, progress_callback = undefined) {
-    if (modelInstance === null || model !== model || dtype !== dtype) {
-        console.log("Creating new model instance for: ", model);
-        tokenizerInstance = await AutoTokenizer.from_pretrained(model, {
-            progress_callback
-        });
-        modelInstance = await AutoModelForCausalLM.from_pretrained(model, {
-            dtype: dtype,
-            device: 'webgpu',
-            progress_callback,
-        });
+export async function getInstance(model = null, dtype = null, progress_callback = undefined) {
+    // Return existing instances if no parameters provided
+    if (model === null && dtype === null) {
+        if (!modelInstance || !tokenizerInstance) {
+            throw new Error('No model instance exists. Please initialize with model and dtype parameters first.');
+        }
+        return { model: modelInstance, tokenizer: tokenizerInstance };
     }
+
+    console.log("Creating new model instance for: ", model, dtype);
+
+    model = model || DEFAULT_MODEL;
+    dtype = dtype || DEFAULT_DTYPE;
+
+    console.log("Creating new model instance for: ", model, dtype);
+    tokenizerInstance = await AutoTokenizer.from_pretrained(model, {
+        progress_callback
+    });
+    modelInstance = await AutoModelForCausalLM.from_pretrained(model, {
+        dtype: dtype,
+        device: 'webgpu',
+        progress_callback,
+    });
+
     return { model: modelInstance, tokenizer: tokenizerInstance };
 }
 
@@ -38,14 +50,14 @@ function sendError(error, context = '') {
     });
 }
 
-export async function load(progress_callback = undefined) {
+export async function load(model = DEFAULT_MODEL, dtype = DEFAULT_DTYPE, progress_callback = undefined) {
     try {
         self.postMessage({
             status: "loading",
             data: "Loading model..."
         });
 
-        const { model, tokenizer } = await getInstance(DEFAULT_MODEL, DEFAULT_DTYPE, progress_callback);
+        const { model: modelInstance, tokenizer } = await getInstance(model, dtype, progress_callback);
 
         self.postMessage({
             status: "loading",
@@ -57,20 +69,24 @@ export async function load(progress_callback = undefined) {
             add_generation_prompt: true,
             return_dict: true,
         });
-        await model.generate({
-            ...inputs,
-            max_new_tokens: 1
-        });
+
+        // await modelInstance.generate({
+        //     ...inputs,
+        //     max_new_tokens: 1
+        // });
 
         self.postMessage({ status: "ready" });
-        return { model, tokenizer };
+        return { model: modelInstance, tokenizer };
     } catch (error) {
-        sendError(error, 'Model not supported in browser');
+        sendError(error, 'Error occurred while loading model');
         throw error;
     }
 }
 
 export function reset() {
+    if (modelInstance) {
+        modelInstance.dispose();
+    }
     modelInstance = null;
     tokenizerInstance = null;
     pastKeyValuesCache = null;
@@ -79,7 +95,6 @@ export function reset() {
 
 export async function generate(messages, params = {}) {
     try {
-        console.log("Generating response for messages: ", messages);
         const { model, tokenizer } = await getInstance();
         if (!model || !tokenizer) {
             throw new Error('Failed to get model or tokenizer instance');
@@ -89,6 +104,17 @@ export async function generate(messages, params = {}) {
             add_generation_prompt: true,
             return_dict: true,
         });
+
+        const defaultParams = {
+            max_new_tokens: 1024,
+            temperature: 0.7,
+            top_p: 0.95,
+            top_k: 40,
+            repetition_penalty: 1.1,
+            do_sample: true,
+        };
+
+        const generationParams = { ...defaultParams, ...params };
 
         let startTime;
         let numTokens = 0;
@@ -121,14 +147,10 @@ export async function generate(messages, params = {}) {
 
         const { past_key_values, sequences } = await model.generate({
             ...inputs,
-            max_new_tokens: 50,
             streamer,
             stopping_criteria: stoppingCriteria,
             return_dict_in_generate: true,
-            temperature: 0.2,
-            top_p: 0.9,
-            do_sample: true,
-            ...params
+            ...generationParams
         });
 
         pastKeyValuesCache = past_key_values;
@@ -137,7 +159,7 @@ export async function generate(messages, params = {}) {
             skip_special_tokens: true,
         });
 
-        return decoded;
+        return { decoded, tps, numTokens };
     } catch (error) {
         sendError(error, 'Error during generation');
         throw error;
@@ -150,7 +172,6 @@ export function handleProgress(progress) {
 
 // Main worker message handler
 self.addEventListener('message', async (event) => {
-    console.log('Worker received message: ', event.data);
     try {
         if (!event.data) {
             throw new Error('No event data received');
@@ -160,19 +181,22 @@ self.addEventListener('message', async (event) => {
 
         switch (type) {
             case 'init':
-                console.log('Initializing pipeline...');
-                await load(handleProgress);
+                const { model = DEFAULT_MODEL, dtype = DEFAULT_DTYPE } = data || {};
+                console.log("Initializing model with: ", model, dtype);
+                await load(model, dtype, handleProgress);
                 break;
 
             case 'generate':
                 stoppingCriteria.reset();
-                console.log('Starting generation with data:', data);
                 try {
-                    const response = await generate(data);
-                    console.log('Generation completed with response:', response);
+                    const { messages, params } = data;
+                    console.log("Generating response for messages: ", messages);
+                    const { decoded, tps, numTokens } = await generate(messages, params);
                     self.postMessage({
                         status: 'complete',
-                        output: response
+                        output: decoded,
+                        tps,
+                        numTokens
                     });
                 } catch (error) {
                     console.error('Generation error:', error);

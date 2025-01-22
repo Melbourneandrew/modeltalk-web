@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SendIcon from './components/icons/SendIcon';
 import ModelDownloadProgress from './components/ModelDownloadProgress';
 import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS } from './lib/model-options';
+import SettingsIcon from './components/icons/SettingsIcon';
+import SettingsModal from './components/modals/SettingsModal';
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -31,23 +34,28 @@ export default function App() {
   const workerRef = useRef<Worker>();
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const initializeModel = () => {
     if (!workerRef.current) return;
 
     setReady(false);
     setProgressItems([]);
 
+    console.log("Initializing model with: ", selectedModel, selectedQuantization);
+
     workerRef.current.postMessage({
       type: 'init',
-      model: selectedModel,
-      dtype: selectedQuantization
+      data: {
+        model: selectedModel,
+        dtype: selectedQuantization
+      }
     });
   };
 
   const onMessageReceived = (e: any) => {
     switch (e.data.status) {
-      case 'initiate': // Start loading model file
-        console.log("initiate: ", e.data);
+      case 'initiate': // Model file has begun downloading
         setReady(false);
         setProgressItems(prev => [...prev, e.data]);
         break;
@@ -64,7 +72,6 @@ export default function App() {
         break;
 
       case 'done': // Model file loaded: remove the progress item from the list.
-        console.log("done: ", e.data);
         setProgressItems(
           prev => prev.filter(item => item.file !== e.data.file)
         );
@@ -80,7 +87,6 @@ export default function App() {
         break;
 
       case 'update': // Update streaming response
-        console.log("update: ", e.data);
         setMessages(prev => {
           const cloned = [...prev];
           const last = cloned.at(-1);
@@ -123,7 +129,7 @@ export default function App() {
     worker.addEventListener('message', onMessageReceived);
 
     // Initial model load
-    // initializeModel();
+    initializeModel();
 
     return () => {
       worker.removeEventListener('message', onMessageReceived);
@@ -131,13 +137,18 @@ export default function App() {
     };
   }, []);
 
-  // Model/quantization changes
   useEffect(() => {
-    console.log('Model/quantization change detected');
-    console.log("Initializing model with: ", selectedModel, selectedQuantization);
-    initializeModel();
+    if (workerRef.current) {
+      initializeModel();
+    }
     setMessages([]);
   }, [selectedModel, selectedQuantization]);
+
+  useEffect(() => {
+    if (!disabled && ready && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [disabled, ready]);
 
   const handleNewUserMessage = (event: React.FormEvent) => {
     event.preventDefault();
@@ -156,10 +167,20 @@ export default function App() {
     if (workerRef.current) {
       workerRef.current.postMessage({
         type: 'generate',
-        data: updatedMessages.map(message => ({
-          role: message.role,
-          content: message.content
-        })),
+        data: {
+          messages: updatedMessages.map(message => ({
+            role: message.role,
+            content: message.content
+          })),
+          params: {
+            max_new_tokens: 1024,
+            temperature: 0.7,
+            top_p: 0.95,
+            top_k: 40,
+            repetition_penalty: 1.1,
+            do_sample: true,
+          }
+        }
       });
     }
 
@@ -189,7 +210,9 @@ export default function App() {
       <div className="fixed top-0 left-0 right-0 p-4 bg-amber-50 z-10">
         <div className="flex flex-col sm:flex-row items-center w-full max-w-4xl mx-auto gap-4">
           <h1 className="text-3xl font-bold text-center">Small Talk 😃</h1>
+          {/*  */}
           <div className="flex flex-col sm:flex-row items-center gap-4 ml-auto">
+            {/* Model selection */}
             <div className="flex items-center gap-2">
               <label htmlFor="model-select" className="text-sm font-medium whitespace-nowrap">Model:</label>
               <select
@@ -203,6 +226,7 @@ export default function App() {
                 ))}
               </select>
             </div>
+            {/* Quantization selection */}
             <div className="flex items-center gap-2">
               <label htmlFor="quantization-select" className="text-sm font-medium whitespace-nowrap">Quantization:</label>
               <select
@@ -217,6 +241,15 @@ export default function App() {
                   </option>
                 ))}
               </select>
+            </div>
+            {/* Settings */}
+            <div className="flex items-center gap-2">
+              <button
+                className="btn btn-square btn-outline border-amber-300 bg-transparent hover:bg-amber-100 hover:text-amber-500"
+                onClick={() => (document.getElementById('settings_modal') as HTMLDialogElement)?.showModal()}
+              >
+                <SettingsIcon />
+              </button>
             </div>
           </div>
         </div>
@@ -253,6 +286,7 @@ export default function App() {
             <form onSubmit={handleNewUserMessage} autoComplete="off">
               <div className="flex gap-2">
                 <input
+                  ref={inputRef}
                   type="text"
                   placeholder="Type your message here..."
                   className="input input-bordered flex-1"
@@ -273,6 +307,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <SettingsModal />
     </div>
   );
 }

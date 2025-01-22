@@ -1,6 +1,5 @@
 export const AVAILABLE_MODELS = [
-    'HuggingFaceTB/SmolLM2-135M-Instruct',
-    'HuggingFaceTB/SmolLM2-350M-Instruct',
+    'onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX',
     'HuggingFaceTB/SmolLM2-1.7B-Instruct'];
 
 export const QUANTIZATION_OPTIONS = [
