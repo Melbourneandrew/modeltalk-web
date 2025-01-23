@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { InformationIcon } from '../icons/InformationIcon';
 
+const TOOLTIP_TEXT = {
+    MAX_TOKENS: "Maximum number of tokens the model will generate in response. One token is roughly 4 characters.",
+    TEMPERATURE: "Controls randomness in the output. Higher values make the output more diverse but less focused.",
+    TOP_P: "Nucleus sampling - considers tokens comprising the top P% of probability mass. Lower values make output more focused.",
+    TOP_K: "Limits the cumulative probability by considering only the top K most likely tokens. Lower values make output more deterministic.",
+    DO_SAMPLE: "When enabled, uses sampling to generate text. When disabled, always picks the most likely next token (greedy decoding).",
+    REPETITION_PENALTY: "Reduces the likelihood of the model repeating the same text. Higher values (>1.0) make repetition less likely."
+};
+
 export default function SettingsModal() {
     const [selectedMethods, setSelectedMethods] = useState<string[]>(['temperature']);
     const [temperatureValue, setTemperatureValue] = useState(0.40);
@@ -53,7 +62,7 @@ export default function SettingsModal() {
                                 <label className="label">
                                     <span className="label-text text-lg flex items-center gap-1">
                                         Max New Tokens
-                                        <div className="tooltip tooltip-right before:z-50" data-tip="Maximum number of tokens the model will generate in response. One token is roughly 4 characters.">
+                                        <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.MAX_TOKENS}>
                                             <InformationIcon />
                                         </div>
                                     </span>
@@ -86,7 +95,7 @@ export default function SettingsModal() {
                                 <label className={`label ${selectedMethods.includes('temperature') ? '' : 'text-gray-300'}`}>
                                     <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('temperature') ? '' : 'text-gray-300'}`}>
                                         Temperature
-                                        <div className="tooltip tooltip-right before:z-50" data-tip="Controls randomness in the output. Higher values make the output more diverse but less focused.">
+                                        <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.TEMPERATURE}>
                                             <InformationIcon />
                                         </div>
                                     </span>
@@ -135,7 +144,7 @@ export default function SettingsModal() {
                                 <label className={`label ${selectedMethods.includes('top_p') ? '' : 'text-gray-300'}`}>
                                     <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('top_p') ? '' : 'text-gray-300'}`}>
                                         Top P
-                                        <div className="tooltip tooltip-right before:z-50" data-tip="Nucleus sampling - considers tokens comprising the top P% of probability mass. Lower values make output more focused.">
+                                        <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.TOP_P}>
                                             <InformationIcon />
                                         </div>
                                     </span>
@@ -184,7 +193,7 @@ export default function SettingsModal() {
                                 <label className={`label ${selectedMethods.includes('top_k') ? '' : 'text-gray-300'}`}>
                                     <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('top_k') ? '' : 'text-gray-300'}`}>
                                         Top K
-                                        <div className="tooltip tooltip-right before:z-50" data-tip="Limits the cumulative probability by considering only the top K most likely tokens. Lower values make output more deterministic.">
+                                        <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.TOP_K}>
                                             <InformationIcon />
                                         </div>
                                     </span>
@@ -221,7 +230,7 @@ export default function SettingsModal() {
                                 <div className="flex items-center gap-4">
                                     <span className="text-lg flex items-center gap-1">
                                         Do Sample
-                                        <div className="tooltip tooltip-right before:z-50" data-tip="When enabled, uses sampling to generate text. When disabled, always picks the most likely next token (greedy decoding).">
+                                        <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.DO_SAMPLE}>
                                             <InformationIcon />
                                         </div>
                                     </span>
@@ -236,7 +245,7 @@ export default function SettingsModal() {
                             <div className="flex-1">
                                 <span className="text-lg block mb-2 flex items-center gap-1">
                                     Repetition Penalty
-                                    <div className="tooltip tooltip-right before:z-50" data-tip="Reduces the likelihood of the model repeating the same text. Higher values (>1.0) make repetition less likely.">
+                                    <div className="tooltip tooltip-right before:z-50" data-tip={TOOLTIP_TEXT.REPETITION_PENALTY}>
                                         <InformationIcon />
                                     </div>
                                 </span>
