@@ -1,28 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import SendIcon from './components/icons/SendIcon';
 import ModelDownloadProgress from './components/ModelDownloadProgress';
-import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS } from './lib/model-options';
+import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS, MODEL_PROFILES } from './lib/model-options';
 import SettingsIcon from './components/icons/SettingsIcon';
 import SettingsModal from './components/modals/SettingsModal';
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-export interface ProgressItem {
-  progress?: number;
-  file: string;
-  loaded?: number;
-  total?: number;
-  status: string;
-  name?: string;
-}
+import { ModelSettings } from './types';
+import ReactMarkdown from 'react-markdown';
+import { ChatMessage, ProgressItem } from './types';
+import SuggestedPrompts from './components/SuggestedPrompts';
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>('HuggingFaceTB/SmolLM2-1.7B-Instruct');
   const [selectedQuantization, setSelectedQuantization] = useState<string>('q4f16');
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -35,6 +25,18 @@ export default function App() {
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string>('');
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [modelSettings, setModelSettings] = useState<ModelSettings>({
+    max_tokens: 1024,
+    temperature: 0.7,
+    top_p: 0.95,
+    top_k: 40,
+    do_sample: true,
+    repetition_penalty: 1.1,
+    selected_methods: ['temperature']
+  });
+
+  const [systemPrompt, setSystemPrompt] = useState<string>("");
 
   const initializeModel = () => {
     if (!workerRef.current) return;
@@ -51,6 +53,22 @@ export default function App() {
         dtype: selectedQuantization
       }
     });
+  };
+
+  const loadModelProfile = (modelId: string) => {
+    const profile = MODEL_PROFILES.find(profile => profile.id === modelId);
+
+    if (profile) {
+      setModelSettings(profile.default_settings);
+      setSystemPrompt(profile.system_prompt);
+
+      if (selectedQuantization !== profile.suggested_quantization) {
+        setSelectedQuantization(profile.suggested_quantization);
+      }
+
+      setSuggestedPrompts(profile.suggested_prompts);
+
+    }
   };
 
   const onMessageReceived = (e: any) => {
@@ -139,10 +157,11 @@ export default function App() {
 
   useEffect(() => {
     if (workerRef.current) {
+      loadModelProfile(selectedModel);
       initializeModel();
     }
     setMessages([]);
-  }, [selectedModel, selectedQuantization]);
+  }, [selectedModel]);
 
   useEffect(() => {
     if (!disabled && ready && inputRef.current) {
@@ -168,17 +187,21 @@ export default function App() {
       workerRef.current.postMessage({
         type: 'generate',
         data: {
-          messages: updatedMessages.map(message => ({
-            role: message.role,
-            content: message.content
-          })),
+          messages: [
+            // Add system message if present
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            ...updatedMessages.map(message => ({
+              role: message.role,
+              content: message.content
+            }))
+          ],
           params: {
-            max_new_tokens: 1024,
-            temperature: 0.7,
-            top_p: 0.95,
-            top_k: 40,
-            repetition_penalty: 1.1,
-            do_sample: true,
+            max_new_tokens: modelSettings.max_tokens,
+            temperature: modelSettings.temperature,
+            top_p: modelSettings.top_p,
+            top_k: modelSettings.top_k,
+            repetition_penalty: modelSettings.repetition_penalty,
+            do_sample: modelSettings.do_sample,
           }
         }
       });
@@ -197,11 +220,50 @@ export default function App() {
           {isUser ? 'You' : selectedModel}
           <time className="text-xs opacity-50 ml-2">{message.timestamp}</time>
         </div>
-        <div className={`chat-bubble ${isUser ? 'bg-amber-200' : 'bg-white'} !opacity-100 text-black`}>
-          {message.content}
+        <div className={`chat-bubble ${isUser ? 'bg-amber-200' : 'bg-white'} !opacity-100 text-black prose max-w-none`}>
+          {isUser ? (
+            message.content
+          ) : (
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          )}
         </div>
       </div>
     );
+  };
+
+  const handlePromptSelect = (prompt: string) => {
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: prompt,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setDisabled(true);
+
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        type: 'generate',
+        data: {
+          messages: [
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            ...updatedMessages.map(message => ({
+              role: message.role,
+              content: message.content
+            }))
+          ],
+          params: {
+            max_new_tokens: modelSettings.max_tokens,
+            temperature: modelSettings.temperature,
+            top_p: modelSettings.top_p,
+            top_k: modelSettings.top_k,
+            repetition_penalty: modelSettings.repetition_penalty,
+            do_sample: modelSettings.do_sample,
+          }
+        }
+      });
+    }
   };
 
   return (
@@ -282,6 +344,18 @@ export default function App() {
 
         {/* Message input form fixed to bottom */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-amber-50">
+          {/* Suggested prompts */}
+          {messages.length === 0 && ready && (() => {
+            const profile = MODEL_PROFILES.find(p => p.id === selectedModel);
+            return profile?.suggested_prompts && profile.suggested_prompts.length > 0 && (
+              <div className="mb-[30px]">
+                <SuggestedPrompts
+                  onPromptClick={handlePromptSelect}
+                  suggestedPrompts={profile.suggested_prompts}
+                />
+              </div>
+            );
+          })()}
           <div className="w-full max-w-4xl mx-auto">
             <form onSubmit={handleNewUserMessage} autoComplete="off">
               <div className="flex gap-2">
@@ -308,7 +382,12 @@ export default function App() {
         </div>
       </div>
 
-      <SettingsModal />
+      <SettingsModal
+        settings={modelSettings}
+        systemPrompt={systemPrompt}
+        onSettingsChange={setModelSettings}
+        onSystemPromptChange={setSystemPrompt}
+      />
     </div>
   );
 }
