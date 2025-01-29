@@ -1,8 +1,5 @@
 import { ModelSettings } from "../types";
 
-export const AVAILABLE_MODELS = [
-    'onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX',
-    'HuggingFaceTB/SmolLM2-1.7B-Instruct'];
 
 export const QUANTIZATION_OPTIONS = [
     { value: 'fp32', label: 'Full Precision (FP32)' },
@@ -40,7 +37,7 @@ export const MODEL_PROFILES: ModelProfile[] = [
         id: 'onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX',
         name: 'DeepSeek R1 Distill Qwen 1.5B',
         description: 'A distilled version of Qwen optimized for ONNX runtime',
-        suggested_quantization: 'q8',
+        suggested_quantization: 'q4f16',
         default_settings: {
             max_tokens: 2048,
             temperature: 0.7,
@@ -63,7 +60,7 @@ export const MODEL_PROFILES: ModelProfile[] = [
         id: 'HuggingFaceTB/SmolLM2-1.7B-Instruct',
         name: 'SmolLM2 1.7B Instruct',
         description: 'A lightweight instruction-tuned language model',
-        suggested_quantization: 'q4',
+        suggested_quantization: 'q4f16',
         default_settings: {
             max_tokens: 1024,
             temperature: 0.8,
@@ -83,3 +80,5 @@ export const MODEL_PROFILES: ModelProfile[] = [
         ]
     }
 ];
+
+export const AVAILABLE_MODELS = MODEL_PROFILES.map(profile => profile.id);

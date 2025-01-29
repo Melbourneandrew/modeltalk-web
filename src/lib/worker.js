@@ -5,12 +5,8 @@ import {
     InterruptableStoppingCriteria
 } from '@huggingface/transformers';
 
-export const DEFAULT_MODEL = 'HuggingFaceTB/SmolLM2-1.7B-Instruct';
-export const DEFAULT_DTYPE = 'q4f16';
-
 let modelInstance = null;
 let tokenizerInstance = null;
-let pastKeyValuesCache = null;
 const stoppingCriteria = new InterruptableStoppingCriteria();
 
 export async function getInstance(model = null, dtype = null, progress_callback = undefined) {
@@ -24,8 +20,9 @@ export async function getInstance(model = null, dtype = null, progress_callback 
 
     console.log("Creating new model instance for: ", model, dtype);
 
-    model = model || DEFAULT_MODEL;
-    dtype = dtype || DEFAULT_DTYPE;
+    if (!model || !dtype) {
+        throw new Error('Both model and dtype parameters are required for initialization');
+    }
 
     console.log("Creating new model instance for: ", model, dtype);
     tokenizerInstance = await AutoTokenizer.from_pretrained(model, {
@@ -50,7 +47,10 @@ function sendError(error, context = '') {
     });
 }
 
-export async function load(model = DEFAULT_MODEL, dtype = DEFAULT_DTYPE, progress_callback = undefined) {
+export async function load(model, dtype, progress_callback = undefined) {
+    if (!model || !dtype) {
+        throw new Error('Both model and dtype parameters are required');
+    }
     try {
         self.postMessage({
             status: "loading",
@@ -181,7 +181,10 @@ self.addEventListener('message', async (event) => {
 
         switch (type) {
             case 'init':
-                const { model = DEFAULT_MODEL, dtype = DEFAULT_DTYPE } = data || {};
+                const { model, dtype } = data || {};
+                if (!model || !dtype) {
+                    throw new Error('Both model and dtype parameters are required for initialization');
+                }
                 console.log("Initializing model with: ", model, dtype);
                 await load(model, dtype, handleProgress);
                 break;

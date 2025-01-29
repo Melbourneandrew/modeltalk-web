@@ -17,10 +17,8 @@ export default function ModelDownloadProgress({ progressItems }: Props) {
                     // Create a unique key combining the base ID, index, and file name
                     const uniqueKey = `${baseId}-${index}-${item.file}`;
 
-                    // Calculate progress percentage
-                    const progressPercentage = item.loaded && item.total
-                        ? Math.min((item.loaded / item.total) * 100, 100)
-                        : Math.min((item.progress || 0) * 100, 100);
+                    // Use progress value directly as percentage
+                    const progressPercentage = Math.min((item.progress || 0) * 100, 100);
 
                     // Format file size in MB
                     const totalSize = item.total

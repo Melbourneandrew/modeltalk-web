@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import SendIcon from './components/icons/SendIcon';
 import ModelDownloadProgress from './components/ModelDownloadProgress';
-import { AVAILABLE_MODELS, QUANTIZATION_OPTIONS, MODEL_PROFILES } from './lib/model-options';
+import { AVAILABLE_MODELS, MODEL_PROFILES } from './lib/model-options';
 import SettingsIcon from './components/icons/SettingsIcon';
 import SettingsModal from './components/modals/SettingsModal';
 import { ModelSettings } from './types';
@@ -10,7 +10,7 @@ import { ChatMessage, ProgressItem } from './types';
 import SuggestedPrompts from './components/SuggestedPrompts';
 
 export default function App() {
-  const [selectedModel, setSelectedModel] = useState<string>('HuggingFaceTB/SmolLM2-1.7B-Instruct');
+  const [selectedModel, setSelectedModel] = useState<string>('onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX');
   const [selectedQuantization, setSelectedQuantization] = useState<string>('q4f16');
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
 
@@ -43,8 +43,6 @@ export default function App() {
 
     setReady(false);
     setProgressItems([]);
-
-    console.log("Initializing model with: ", selectedModel, selectedQuantization);
 
     workerRef.current.postMessage({
       type: 'init',
@@ -161,7 +159,7 @@ export default function App() {
       initializeModel();
     }
     setMessages([]);
-  }, [selectedModel]);
+  }, [selectedModel, selectedQuantization]);
 
   useEffect(() => {
     if (!disabled && ready && inputRef.current) {
@@ -289,7 +287,7 @@ export default function App() {
               </select>
             </div>
             {/* Quantization selection */}
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <label htmlFor="quantization-select" className="text-sm font-medium whitespace-nowrap">Quantization:</label>
               <select
                 id="quantization-select"
@@ -303,7 +301,7 @@ export default function App() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
             {/* Settings */}
             <div className="flex items-center gap-2">
               <button
@@ -351,7 +349,7 @@ export default function App() {
               <div className="mb-[30px]">
                 <SuggestedPrompts
                   onPromptClick={handlePromptSelect}
-                  suggestedPrompts={profile.suggested_prompts}
+                  suggestedPrompts={suggestedPrompts || []}
                 />
               </div>
             );
