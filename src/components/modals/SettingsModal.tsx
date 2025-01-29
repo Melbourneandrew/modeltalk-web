@@ -146,7 +146,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                 type="checkbox"
                                 className={`checkbox ${selectedMethods.includes('temperature') ? 'checkbox-primary' : 'checkbox-ghost'}`}
                                 checked={selectedMethods.includes('temperature')}
-                                onChange={(e) => handleMethodToggle('temperature')}
+                                onChange={() => handleMethodToggle('temperature')}
                             />
                             <div className="flex-1">
                                 <label className={`label ${selectedMethods.includes('temperature') ? '' : 'text-gray-300'}`}>
@@ -190,7 +190,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                 type="checkbox"
                                 className={`checkbox ${selectedMethods.includes('top_p') ? 'checkbox-primary' : 'checkbox-ghost'}`}
                                 checked={selectedMethods.includes('top_p')}
-                                onChange={(e) => handleMethodToggle('top_p')}
+                                onChange={() => handleMethodToggle('top_p')}
                             />
                             <div className="flex-1">
                                 <label className={`label ${selectedMethods.includes('top_p') ? '' : 'text-gray-300'}`}>
@@ -234,7 +234,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                 type="checkbox"
                                 className={`checkbox ${selectedMethods.includes('top_k') ? 'checkbox-primary' : 'checkbox-ghost'}`}
                                 checked={selectedMethods.includes('top_k')}
-                                onChange={(e) => handleMethodToggle('top_k')}
+                                onChange={() => handleMethodToggle('top_k')}
                             />
                             <div className="flex-1">
                                 <label className={`label ${selectedMethods.includes('top_k') ? '' : 'text-gray-300'}`}>
