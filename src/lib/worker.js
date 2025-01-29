@@ -7,6 +7,7 @@ import {
 
 let modelInstance = null;
 let tokenizerInstance = null;
+let pastKeyValuesCache = null;
 const stoppingCriteria = new InterruptableStoppingCriteria();
 
 export async function getInstance(model = null, dtype = null, progress_callback = undefined) {
