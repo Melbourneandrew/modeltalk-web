@@ -8,6 +8,7 @@ import { ModelSettings } from './types';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, ProgressItem } from './types';
 import SuggestedPrompts from './components/SuggestedPrompts';
+import WebgpuProgress from './components/WebgpuProgress';
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>('onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX');
@@ -37,6 +38,8 @@ export default function App() {
   });
 
   const [systemPrompt, setSystemPrompt] = useState<string>("");
+
+  const [isInitializingWebgpu, setIsInitializingWebgpu] = useState(false);
 
   const initializeModel = () => {
     if (!workerRef.current) return;
@@ -71,8 +74,9 @@ export default function App() {
 
   const onMessageReceived = (e: any) => {
     switch (e.data.status) {
-      case 'initiate': // Model file has begun downloading
+      case 'initiate':
         setReady(false);
+        setIsInitializingWebgpu(true);
         setProgressItems(prev => [...prev, e.data]);
         break;
 
@@ -87,22 +91,22 @@ export default function App() {
         );
         break;
 
-      case 'done': // Model file loaded: remove the progress item from the list.
-        setProgressItems(
-          prev => prev.filter(item => item.file !== e.data.file)
-        );
+      case 'done':
+        setProgressItems([]);
+        setIsInitializingWebgpu(true);
         break;
 
-      case 'ready': // Pipeline ready: the worker is ready to accept messages.
+      case 'ready':
         console.log("ready: ", e.data);
         setReady(true);
+        // setIsInitializingWebgpu(false);
         break;
 
-      case 'start': // Start streaming response
+      case 'start':
         setCurrentStreamingMessage('');
         break;
 
-      case 'update': // Update streaming response
+      case 'update':
         setMessages(prev => {
           const cloned = [...prev];
           const last = cloned.at(-1);
@@ -122,12 +126,12 @@ export default function App() {
         setCurrentStreamingMessage('');
         break;
 
-      case 'complete': // Streaming response complete: add the response to the messages list.
+      case 'complete':
         console.log("complete: ", e.data);
         setDisabled(false);
         break;
 
-      case 'error': // Error: stop streaming and disable the input field.
+      case 'error':
         console.error("error: ", e.data);
         setDisabled(false);
         break;
@@ -144,7 +148,6 @@ export default function App() {
     workerRef.current = worker;
     worker.addEventListener('message', onMessageReceived);
 
-    // Initial model load
     initializeModel();
 
     return () => {
@@ -186,7 +189,6 @@ export default function App() {
         type: 'generate',
         data: {
           messages: [
-            // Add system message if present
             ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
             ...updatedMessages.map(message => ({
               role: message.role,
@@ -266,13 +268,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-amber-50 p-4">
-      {/* Header bar with model selection controls */}
       <div className="fixed top-0 left-0 right-0 p-4 bg-amber-50 z-10">
         <div className="flex flex-col sm:flex-row items-center w-full max-w-4xl mx-auto gap-4">
           <h1 className="text-3xl font-bold text-center">Small Talk 😃</h1>
-          {/*  */}
           <div className="flex flex-col sm:flex-row items-center gap-4 ml-auto">
-            {/* Model selection */}
             <div className="flex items-center gap-2">
               <label htmlFor="model-select" className="text-sm font-medium whitespace-nowrap">Model:</label>
               <select
@@ -286,23 +285,6 @@ export default function App() {
                 ))}
               </select>
             </div>
-            {/* Quantization selection */}
-            {/* <div className="flex items-center gap-2">
-              <label htmlFor="quantization-select" className="text-sm font-medium whitespace-nowrap">Quantization:</label>
-              <select
-                id="quantization-select"
-                className="select select-bordered w-[100px] border-amber-300 bg-transparent text-sm"
-                value={selectedQuantization}
-                onChange={(e) => setSelectedQuantization(e.target.value)}
-              >
-                {QUANTIZATION_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div> */}
-            {/* Settings */}
             <div className="flex items-center gap-2">
               <button
                 className="btn btn-square btn-outline border-amber-300 bg-transparent hover:bg-amber-100 hover:text-amber-500"
@@ -315,14 +297,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* Progress indicators for model file downloads */}
-      <ModelDownloadProgress
-        progressItems={progressItems}
-      />
+      {progressItems.length > 0 && (
+        <ModelDownloadProgress
+          progressItems={progressItems}
+        />
+      )}
 
-      {/* Main chat container with top padding to account for fixed header */}
+      {isInitializingWebgpu && <WebgpuProgress />}
+
       <div className="w-full max-w-4xl mx-auto space-y-4 pt-20">
-        {/* Message history */}
         <div className="space-y-4 pb-24">
           {messages.map(renderMessage)}
           {currentStreamingMessage && (
@@ -340,9 +323,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Message input form fixed to bottom */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-amber-50">
-          {/* Suggested prompts */}
           {messages.length === 0 && ready && (() => {
             const profile = MODEL_PROFILES.find(p => p.id === selectedModel);
             return profile?.suggested_prompts && profile.suggested_prompts.length > 0 && (
