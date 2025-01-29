@@ -29,12 +29,8 @@ export default function App() {
 
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
     max_tokens: 1024,
-    temperature: 0.7,
-    top_p: 0.95,
-    top_k: 40,
     do_sample: true,
     repetition_penalty: 1.1,
-    selected_methods: ['temperature']
   });
 
   const [systemPrompt, setSystemPrompt] = useState<string>("");

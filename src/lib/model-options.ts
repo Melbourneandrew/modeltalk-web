@@ -19,7 +19,6 @@ export const DEFAULT_SETTINGS: ModelSettings = {
     top_k: 40,
     do_sample: true,
     repetition_penalty: 1.1,
-    selected_methods: []
 };
 
 export interface ModelProfile {
@@ -39,13 +38,12 @@ export const MODEL_PROFILES: ModelProfile[] = [
         description: 'A distilled version of Qwen optimized for ONNX runtime',
         suggested_quantization: 'q4f16',
         default_settings: {
-            max_tokens: 2048,
+            max_tokens: 4096,
             temperature: 0.7,
             top_p: 0.95,
             top_k: 40,
             do_sample: true,
-            repetition_penalty: 1.1,
-            selected_methods: []
+            repetition_penalty: 1.2,
         },
         system_prompt: "You are a helpful AI assistant that provides accurate and concise responses.",
         suggested_prompts: [
@@ -62,13 +60,12 @@ export const MODEL_PROFILES: ModelProfile[] = [
         description: 'A lightweight instruction-tuned language model',
         suggested_quantization: 'q4f16',
         default_settings: {
-            max_tokens: 1024,
-            temperature: 0.8,
+            max_tokens: 2048,
+            temperature: 0.7,
             top_p: 0.9,
             top_k: 50,
             do_sample: true,
             repetition_penalty: 1.2,
-            selected_methods: []
         },
         system_prompt: "You are a helpful assistant focused on providing concise and accurate information.",
         suggested_prompts: [

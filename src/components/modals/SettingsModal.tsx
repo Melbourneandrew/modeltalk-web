@@ -1,5 +1,6 @@
 import { ModelSettings } from '../../types';
 import TooltipButton from '../TooltipButton';
+import { useState } from 'react';
 
 const TOOLTIP_INFO = {
     MAX_TOKENS: {
@@ -36,25 +37,45 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ settings, systemPrompt, onSettingsChange, onSystemPromptChange }: SettingsModalProps) {
+    const [selectedMethods, setSelectedMethods] = useState<string[]>(['temperature', 'top_p', 'top_k']);
+
+    const handleMethodToggle = (method: string) => {
+        if (selectedMethods.includes(method)) {
+            setSelectedMethods(selectedMethods.filter(m => m !== method));
+            onSettingsChange({ ...settings, [method]: undefined });
+        } else {
+            setSelectedMethods([...selectedMethods, method]);
+        }
+    };
+
     const handleTemperatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = Number(e.target.type === 'range' ?
             (parseInt(e.target.value) / 100).toFixed(2) :
             Math.min(1, Math.max(0, Number(e.target.value))));
-        onSettingsChange({ ...settings, temperature: value });
+        onSettingsChange({
+            ...settings,
+            temperature: selectedMethods.includes('temperature') ? value : undefined
+        });
     };
 
     const handleTopPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = Number(e.target.type === 'range' ?
             (parseInt(e.target.value) / 100).toFixed(2) :
             Math.min(1, Math.max(0, Number(e.target.value))));
-        onSettingsChange({ ...settings, top_p: value });
+        onSettingsChange({
+            ...settings,
+            top_p: selectedMethods.includes('top_p') ? value : undefined
+        });
     };
 
     const handleTopKChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = Number(e.target.type === 'range' ?
-            (parseInt(e.target.value) / 100).toFixed(2) :
-            Math.min(1, Math.max(0, Number(e.target.value))));
-        onSettingsChange({ ...settings, top_k: value });
+        const value = e.target.type === 'range' ?
+            parseInt(e.target.value) :
+            Math.min(100, Math.max(0, Math.floor(Number(e.target.value))));
+        onSettingsChange({
+            ...settings,
+            top_k: selectedMethods.includes('top_k') ? value : undefined
+        });
     };
 
     const handleMaxTokensChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,19 +144,13 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                         <div className="flex items-center gap-4">
                             <input
                                 type="checkbox"
-                                className={`checkbox ${settings.selected_methods.includes('temperature') ? 'checkbox-primary' : 'checkbox-ghost'}`}
-                                checked={settings.selected_methods.includes('temperature')}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        onSettingsChange({ ...settings, selected_methods: [...settings.selected_methods, 'temperature'] });
-                                    } else {
-                                        onSettingsChange({ ...settings, selected_methods: settings.selected_methods.filter(m => m !== 'temperature') });
-                                    }
-                                }}
+                                className={`checkbox ${selectedMethods.includes('temperature') ? 'checkbox-primary' : 'checkbox-ghost'}`}
+                                checked={selectedMethods.includes('temperature')}
+                                onChange={(e) => handleMethodToggle('temperature')}
                             />
                             <div className="flex-1">
-                                <label className={`label ${settings.selected_methods.includes('temperature') ? '' : 'text-gray-300'}`}>
-                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${settings.selected_methods.includes('temperature') ? '' : 'text-gray-300'}`}>
+                                <label className={`label ${selectedMethods.includes('temperature') ? '' : 'text-gray-300'}`}>
+                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('temperature') ? '' : 'text-gray-300'}`}>
                                         Temperature
                                         <TooltipButton
                                             tooltipText={TOOLTIP_INFO.TEMPERATURE.text}
@@ -150,7 +165,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                             step="0.01"
                                             value={settings.temperature}
                                             className="input input-xs input-bordered w-20"
-                                            disabled={!settings.selected_methods.includes('temperature')}
+                                            disabled={!selectedMethods.includes('temperature')}
                                             onChange={handleTemperatureChange}
                                         />
                                     </span>
@@ -159,12 +174,12 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.temperature * 100}
-                                    className={`range ${settings.selected_methods.includes('temperature')
+                                    value={settings.temperature! * 100}
+                                    className={`range ${selectedMethods.includes('temperature')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
                                         }`}
-                                    disabled={!settings.selected_methods.includes('temperature')}
+                                    disabled={!selectedMethods.includes('temperature')}
                                     onChange={handleTemperatureChange}
                                 />
                             </div>
@@ -173,19 +188,13 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                         <div className="flex items-center gap-4">
                             <input
                                 type="checkbox"
-                                className={`checkbox ${settings.selected_methods.includes('top_p') ? 'checkbox-primary' : 'checkbox-ghost'}`}
-                                checked={settings.selected_methods.includes('top_p')}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        onSettingsChange({ ...settings, selected_methods: [...settings.selected_methods, 'top_p'] });
-                                    } else {
-                                        onSettingsChange({ ...settings, selected_methods: settings.selected_methods.filter(m => m !== 'top_p') });
-                                    }
-                                }}
+                                className={`checkbox ${selectedMethods.includes('top_p') ? 'checkbox-primary' : 'checkbox-ghost'}`}
+                                checked={selectedMethods.includes('top_p')}
+                                onChange={(e) => handleMethodToggle('top_p')}
                             />
                             <div className="flex-1">
-                                <label className={`label ${settings.selected_methods.includes('top_p') ? '' : 'text-gray-300'}`}>
-                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${settings.selected_methods.includes('top_p') ? '' : 'text-gray-300'}`}>
+                                <label className={`label ${selectedMethods.includes('top_p') ? '' : 'text-gray-300'}`}>
+                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('top_p') ? '' : 'text-gray-300'}`}>
                                         Top P
                                         <TooltipButton
                                             tooltipText={TOOLTIP_INFO.TOP_P.text}
@@ -200,7 +209,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                             step="0.01"
                                             value={settings.top_p}
                                             className="input input-xs input-bordered w-20"
-                                            disabled={!settings.selected_methods.includes('top_p')}
+                                            disabled={!selectedMethods.includes('top_p')}
                                             onChange={handleTopPChange}
                                         />
                                     </span>
@@ -209,12 +218,12 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.top_p * 100}
-                                    className={`range ${settings.selected_methods.includes('top_p')
+                                    value={settings.top_p! * 100}
+                                    className={`range ${selectedMethods.includes('top_p')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
                                         }`}
-                                    disabled={!settings.selected_methods.includes('top_p')}
+                                    disabled={!selectedMethods.includes('top_p')}
                                     onChange={handleTopPChange}
                                 />
                             </div>
@@ -223,19 +232,13 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                         <div className="flex items-center gap-4">
                             <input
                                 type="checkbox"
-                                className={`checkbox ${settings.selected_methods.includes('top_k') ? 'checkbox-primary' : 'checkbox-ghost'}`}
-                                checked={settings.selected_methods.includes('top_k')}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        onSettingsChange({ ...settings, selected_methods: [...settings.selected_methods, 'top_k'] });
-                                    } else {
-                                        onSettingsChange({ ...settings, selected_methods: settings.selected_methods.filter(m => m !== 'top_k') });
-                                    }
-                                }}
+                                className={`checkbox ${selectedMethods.includes('top_k') ? 'checkbox-primary' : 'checkbox-ghost'}`}
+                                checked={selectedMethods.includes('top_k')}
+                                onChange={(e) => handleMethodToggle('top_k')}
                             />
                             <div className="flex-1">
-                                <label className={`label ${settings.selected_methods.includes('top_k') ? '' : 'text-gray-300'}`}>
-                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${settings.selected_methods.includes('top_k') ? '' : 'text-gray-300'}`}>
+                                <label className={`label ${selectedMethods.includes('top_k') ? '' : 'text-gray-300'}`}>
+                                    <span className={`label-text-alt text-lg flex items-center gap-1 ${selectedMethods.includes('top_k') ? '' : 'text-gray-300'}`}>
                                         Top K
                                         <TooltipButton
                                             tooltipText={TOOLTIP_INFO.TOP_K.text}
@@ -250,7 +253,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                             step="0.01"
                                             value={settings.top_k}
                                             className="input input-xs input-bordered w-20"
-                                            disabled={!settings.selected_methods.includes('top_k')}
+                                            disabled={!selectedMethods.includes('top_k')}
                                             onChange={handleTopKChange}
                                         />
                                     </span>
@@ -259,12 +262,12 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.top_k * 100}
-                                    className={`range ${settings.selected_methods.includes('top_k')
+                                    value={settings.top_k ?? 0 * 100}
+                                    className={`range ${selectedMethods.includes('top_k')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
                                         }`}
-                                    disabled={!settings.selected_methods.includes('top_k')}
+                                    disabled={!selectedMethods.includes('top_k')}
                                     onChange={handleTopKChange}
                                 />
                             </div>

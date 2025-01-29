@@ -15,12 +15,11 @@ export interface ProgressItem {
 
 export interface ModelSettings {
     max_tokens: number;
-    temperature: number;
-    top_p: number;
-    top_k: number;
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
     do_sample: boolean;
     repetition_penalty: number;
-    selected_methods: string[];
 }
 
 interface ProgressData {

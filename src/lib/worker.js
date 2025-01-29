@@ -106,16 +106,9 @@ export async function generate(messages, params = {}) {
             return_dict: true,
         });
 
-        const defaultParams = {
-            max_new_tokens: 1024,
-            temperature: 0.7,
-            top_p: 0.95,
-            top_k: 40,
-            repetition_penalty: 1.1,
-            do_sample: true,
-        };
+        console.log("Generation params: ", params);
 
-        const generationParams = { ...defaultParams, ...params };
+        const generationParams = params;
 
         let startTime;
         let numTokens = 0;
