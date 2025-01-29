@@ -76,7 +76,7 @@ export default function App() {
     switch (e.data.status) {
       case 'initiate':
         setReady(false);
-        setIsInitializingWebgpu(true);
+        setIsInitializingWebgpu(false);
         setProgressItems(prev => [...prev, e.data]);
         break;
 
@@ -99,7 +99,7 @@ export default function App() {
       case 'ready':
         console.log("ready: ", e.data);
         setReady(true);
-        // setIsInitializingWebgpu(false);
+        setIsInitializingWebgpu(false);
         break;
 
       case 'start':
