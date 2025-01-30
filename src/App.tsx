@@ -46,6 +46,8 @@ export default function App() {
 
   const [isMobile, setIsMobile] = useState(false);
 
+  const [isWaitingForStart, setIsWaitingForStart] = useState(false);
+
   const initializeModel = () => {
     if (!workerRef.current) return;
 
@@ -114,8 +116,9 @@ export default function App() {
         setIsInitializingWebgpu(false);
         break;
 
-      case 'start':
+      case 'start': // Start streaming message
         setCurrentStreamingMessage('');
+        setIsWaitingForStart(false);
         break;
 
       case 'update':
@@ -197,6 +200,8 @@ export default function App() {
     event.preventDefault();
     if (!newMessage.trim() || !ready || disabled) return;
 
+    setIsWaitingForStart(true);
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: newMessage.trim(),
@@ -255,6 +260,8 @@ export default function App() {
   };
 
   const handlePromptSelect = (prompt: string) => {
+    setIsWaitingForStart(true);
+
     const userMessage: ChatMessage = {
       role: 'user',
       content: prompt,
@@ -335,6 +342,9 @@ export default function App() {
       <div className="w-full max-w-4xl mx-auto space-y-4 pt-20">
         <div className="space-y-4 pb-24">
           {messages.map(renderMessage)}
+          {isWaitingForStart && (
+            <span className="mr-[20px] loading loading-dots loading-lg text-amber-400"></span>
+          )}
           {currentStreamingMessage && (
             <div className="chat chat-start">
               <div className="chat-header text-gray-700">
