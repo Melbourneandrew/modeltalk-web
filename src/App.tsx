@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import { ChatMessage, ProgressItem } from './types';
 import SuggestedPrompts from './components/SuggestedPrompts';
 import WebgpuProgress from './components/WebgpuProgress';
+import ErrorModal from './components/modals/ErrorModal';
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>('onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX');
@@ -36,6 +37,9 @@ export default function App() {
   const [systemPrompt, setSystemPrompt] = useState<string>("");
 
   const [isInitializingWebgpu, setIsInitializingWebgpu] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
   const initializeModel = () => {
     if (!workerRef.current) return;
@@ -128,8 +132,10 @@ export default function App() {
         break;
 
       case 'error':
-        console.error("error: ", e.data);
+        console.error("error: ", e.data.error);
         setDisabled(false);
+        setErrorMessage(e.data.error || 'An unknown error occurred');
+        setIsErrorModalOpen(true);
         break;
     }
   };
@@ -362,6 +368,12 @@ export default function App() {
         systemPrompt={systemPrompt}
         onSettingsChange={setModelSettings}
         onSystemPromptChange={setSystemPrompt}
+      />
+
+      <ErrorModal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        message={errorMessage}
       />
     </div>
   );

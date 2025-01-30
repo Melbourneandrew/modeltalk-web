@@ -8,6 +8,17 @@ interface ErrorModalProps {
 export default function ErrorModal({ isOpen, onClose, message }: ErrorModalProps) {
     if (!isOpen) return null;
 
+    if (message.includes("Error occurred while loading model: Aborted()")) {
+        message = "The model is not supported by transformers.js. Please try a different model.";
+    }
+
+    if (message.includes("Unauthorized access to file")) {
+        message = "This model is not available for download. Please try a different model.";
+    }
+
+
+
+
     return (
         <div className="modal modal-open">
             <div className="modal-box border-2 border-error">

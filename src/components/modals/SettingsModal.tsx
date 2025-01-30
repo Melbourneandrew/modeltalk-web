@@ -111,7 +111,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     </span>
                                 </label>
                                 <textarea
-                                    value={systemPrompt}
+                                    value={systemPrompt ?? ''}
                                     onChange={handleSystemPromptChange}
                                     className="textarea textarea-bordered border-amber-300 w-full resize-none h-24"
                                     placeholder="Enter system instructions for the AI..."
@@ -134,7 +134,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="number"
                                     min="1"
                                     max="32000"
-                                    value={settings.max_tokens}
+                                    value={settings.max_tokens ?? 1}
                                     className="input input-bordered border-amber-300 w-full"
                                     onChange={handleMaxTokensChange}
                                 />
@@ -163,7 +163,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                             min="0"
                                             max="1"
                                             step="0.01"
-                                            value={settings.temperature}
+                                            value={settings.temperature ?? 0}
                                             className="input input-xs input-bordered w-20"
                                             disabled={!selectedMethods.includes('temperature')}
                                             onChange={handleTemperatureChange}
@@ -174,7 +174,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.temperature! * 100}
+                                    value={(settings.temperature ?? 0) * 100}
                                     className={`range ${selectedMethods.includes('temperature')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
@@ -207,7 +207,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                             min="0"
                                             max="1"
                                             step="0.01"
-                                            value={settings.top_p}
+                                            value={settings.top_p ?? 0}
                                             className="input input-xs input-bordered w-20"
                                             disabled={!selectedMethods.includes('top_p')}
                                             onChange={handleTopPChange}
@@ -218,7 +218,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.top_p! * 100}
+                                    value={(settings.top_p ?? 0) * 100}
                                     className={`range ${selectedMethods.includes('top_p')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
@@ -249,9 +249,9 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                         <input
                                             type="number"
                                             min="0"
-                                            max="1"
-                                            step="0.01"
-                                            value={settings.top_k}
+                                            max="100"
+                                            step="1"
+                                            value={settings.top_k ?? 0}
                                             className="input input-xs input-bordered w-20"
                                             disabled={!selectedMethods.includes('top_k')}
                                             onChange={handleTopKChange}
@@ -262,7 +262,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     type="range"
                                     min={0}
                                     max="100"
-                                    value={settings.top_k ?? 0 * 100}
+                                    value={(settings.top_k ?? 0) * 100}
                                     className={`range ${selectedMethods.includes('top_k')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
@@ -304,7 +304,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     min="1"
                                     max="2"
                                     step="0.01"
-                                    value={settings.repetition_penalty}
+                                    value={settings.repetition_penalty ?? 1}
                                     className="input input-bordered border-amber-300 w-full"
                                     onChange={handleRepetitionPenaltyChange}
                                 />

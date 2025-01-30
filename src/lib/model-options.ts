@@ -75,7 +75,51 @@ export const MODEL_PROFILES: ModelProfile[] = [
             "Write a short story.",
             "What is the meaning of life?"
         ]
-    }
+    },
+    // {
+    //     id: 'onnx-community/DeepSeek-Coder-Qwen-2.5B-ONNX',
+    //     name: 'DeepSeek Coder Qwen 2.5B',
+    //     description: 'A large-scale language model with 2.5B parameters',
+    //     suggested_quantization: 'q4f16',
+    //     default_settings: {
+    //         max_tokens: 4096,
+    //         temperature: 0.7,
+    //         top_p: 0.95,
+    //         top_k: 40,
+    //         do_sample: true,
+    //         repetition_penalty: 1.2,
+    //     },
+    //     system_prompt: "You are a helpful assistant focused on providing concise and accurate information.",
+    //     suggested_prompts: [
+    //         "How far away is the sun?",
+    //         "What is the capital of France?",
+    //         "Tell me about John Von Neumann.",
+    //         "Write a short story.",
+    //         "What is the meaning of life?"
+    //     ]
+    // },
+    // {
+    //     id: 'onnx-community/Qwen2.5-1.5B-Instruct',
+    //     name: 'Qwen 2.5B Instruct',
+    //     description: 'A large-scale language model with 1.5B parameters',
+    //     suggested_quantization: 'q4f16',
+    //     default_settings: {
+    //         max_tokens: 4096,
+    //         temperature: 0.7,
+    //         top_p: 0.95,
+    //         top_k: 40,
+    //         do_sample: true,
+    //         repetition_penalty: 1.2,
+    //     },
+    //     system_prompt: "You are a helpful assistant focused on providing concise and accurate information.",
+    //     suggested_prompts: [
+    //         "How far away is the sun?",
+    //         "What is the capital of France?",
+    //         "Tell me about John Von Neumann.",
+    //         "Write a short story.",
+    //         "What is the meaning of life?"
+    //     ]
+    // }
 ];
 
 export const AVAILABLE_MODELS = MODEL_PROFILES.map(profile => profile.id);
