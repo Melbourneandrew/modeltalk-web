@@ -118,10 +118,11 @@ export default function App() {
 
       case 'start': // Start streaming message
         setCurrentStreamingMessage('');
-        setIsWaitingForStart(false);
         break;
 
       case 'update':
+        setIsWaitingForStart(false);
+
         setMessages(prev => {
           const cloned = [...prev];
           const last = cloned.at(-1);
