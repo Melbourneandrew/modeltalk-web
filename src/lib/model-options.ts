@@ -39,9 +39,9 @@ export const MODEL_PROFILES: ModelProfile[] = [
         suggested_quantization: 'q4f16',
         default_settings: {
             max_tokens: 4096,
-            temperature: 0.7,
-            top_p: 0.95,
-            top_k: 40,
+            temperature: 0.3,
+            top_p: 0.5,
+            top_k: 20,
             do_sample: true,
             repetition_penalty: 1.2,
         },

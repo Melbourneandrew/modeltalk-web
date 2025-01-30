@@ -71,7 +71,7 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
     const handleTopKChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.type === 'range' ?
             parseInt(e.target.value) :
-            Math.min(100, Math.max(0, Math.floor(Number(e.target.value))));
+            Math.min(100, Math.max(1, Math.floor(Number(e.target.value))));
         onSettingsChange({
             ...settings,
             top_k: selectedMethods.includes('top_k') ? value : undefined
@@ -248,10 +248,10 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                     <span className="label-text-alt flex items-center gap-2">
                                         <input
                                             type="number"
-                                            min="0"
+                                            min="1"
                                             max="100"
                                             step="1"
-                                            value={settings.top_k ?? 0}
+                                            value={settings.top_k ?? 1}
                                             className="input input-xs input-bordered w-20"
                                             disabled={!selectedMethods.includes('top_k')}
                                             onChange={handleTopKChange}
@@ -260,9 +260,9 @@ export default function SettingsModal({ settings, systemPrompt, onSettingsChange
                                 </label>
                                 <input
                                     type="range"
-                                    min={0}
+                                    min={1}
                                     max="100"
-                                    value={(settings.top_k ?? 0) * 100}
+                                    value={settings.top_k ?? 1}
                                     className={`range ${selectedMethods.includes('top_k')
                                         ? '[--range-shdw:theme(colors.amber.300)]'
                                         : '[--range-shdw:theme(colors.gray.300)]'
