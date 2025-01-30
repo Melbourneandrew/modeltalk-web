@@ -61,11 +61,11 @@ export const MODEL_PROFILES: ModelProfile[] = [
         suggested_quantization: 'q4f16',
         default_settings: {
             max_tokens: 2048,
-            temperature: 0.7,
-            top_p: 0.9,
-            top_k: 50,
+            temperature: 0.3,
+            top_p: 0.5,
+            top_k: 20,
             do_sample: true,
-            repetition_penalty: 1.2,
+            repetition_penalty: 1.4,
         },
         system_prompt: "You are a helpful assistant focused on providing concise and accurate information.",
         suggested_prompts: [

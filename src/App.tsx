@@ -42,17 +42,17 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
-  const [_, setActiveDownloads] = useState<Set<string>>(new Set());
-
   const [isMobile, setIsMobile] = useState(false);
 
   const [isWaitingForStart, setIsWaitingForStart] = useState(false);
+
+  const activeDownloads = new Set<string>();
 
   const initializeModel = () => {
     if (!workerRef.current) return;
 
     setReady(false);
-    setProgressItems([]);
+    // setProgressItems([]);
 
     workerRef.current.postMessage({
       type: 'init',
@@ -84,15 +84,32 @@ export default function App() {
       case 'initiate':
         setReady(false);
         setIsInitializingWebgpu(false);
-        setProgressItems(prev => [...prev, e.data]);
-        setActiveDownloads(prev => new Set(prev).add(e.data.file));
+        setProgressItems(prev => {
+          // Check if we already have this file in progress
+          const exists = prev.some(item => item.file === e.data.file);
+          if (exists) {
+            return prev;
+          }
+          return [...prev, {
+            file: e.data.file,
+            status: e.data.status,
+            name: e.data.name,
+            progress: 0,
+            loaded: e.data.loaded,
+            total: e.data.total
+          }];
+        });
+        activeDownloads.add(e.data.file);
         break;
 
-      case 'progress': // Model file download progress
-        setProgressItems(
-          prev => prev.map(item => {
+      case 'progress':
+        setProgressItems(prev =>
+          prev.map(item => {
             if (item.file === e.data.file) {
-              return { ...item, ...e.data }
+              return {
+                ...item,
+                ...e.data
+              } as ProgressItem;
             }
             return item;
           })
@@ -100,15 +117,15 @@ export default function App() {
         break;
 
       case 'done':
-        setProgressItems([]);
-        setActiveDownloads(prev => {
-          const updated = new Set(prev);
-          updated.delete(e.data.file);
-          if (updated.size === 0) {
-            setIsInitializingWebgpu(true);
-          }
-          return updated;
-        });
+        setProgressItems(prev =>
+          prev.filter(item => item.file !== e.data.file)
+        );
+        activeDownloads.delete(e.data.file);
+        if (activeDownloads.size === 0) {
+          setIsInitializingWebgpu(true);
+        }
+        console.log('done', e.data);
+        console.log('activeDownloads', activeDownloads);
         break;
 
       case 'ready':
@@ -333,9 +350,16 @@ export default function App() {
       </div>
 
       {progressItems.length > 0 && (
-        <ModelDownloadProgress
-          progressItems={progressItems}
-        />
+        <div className="fixed bottom-24 left-0 right-0 p-4">
+          <div className="w-full max-w-4xl mx-auto space-y-2">
+            {progressItems.map((item, index) => (
+              <ModelDownloadProgress
+                key={`${item.file}-${index}`}
+                item={item}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {isInitializingWebgpu && <WebgpuProgress />}

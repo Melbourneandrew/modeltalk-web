@@ -19,13 +19,10 @@ export async function getInstance(model = null, dtype = null, progress_callback 
         return { model: modelInstance, tokenizer: tokenizerInstance };
     }
 
-    console.log("Creating new model instance for: ", model, dtype);
-
     if (!model || !dtype) {
         throw new Error('Both model and dtype parameters are required for initialization');
     }
 
-    console.log("Creating new model instance for: ", model, dtype);
     tokenizerInstance = await AutoTokenizer.from_pretrained(model, {
         progress_callback
     });
@@ -60,16 +57,11 @@ export async function load(model, dtype, progress_callback = undefined) {
 
         const { model: modelInstance, tokenizer } = await getInstance(model, dtype, progress_callback);
 
-        self.postMessage({
-            status: "loading",
-            data: "Compiling shaders and warming up model..."
-        });
-
         // Run model with dummy input to compile shaders
-        const inputs = tokenizer.apply_chat_template([{ role: "user", content: "Hello" }], {
-            add_generation_prompt: true,
-            return_dict: true,
-        });
+        // const inputs = tokenizer.apply_chat_template([{ role: "user", content: "Hello" }], {
+        //     add_generation_prompt: true,
+        //     return_dict: true,
+        // });
 
         // await modelInstance.generate({
         //     ...inputs,
