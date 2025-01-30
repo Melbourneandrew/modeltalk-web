@@ -16,7 +16,9 @@ export default function ErrorModal({ isOpen, onClose, message }: ErrorModalProps
         message = "This model is not available for download. Please try a different model.";
     }
 
-
+    if (message.includes('Unsupported device: "webgpu"')) {
+        message = "WebGPU is not supported by your browser. Please try a different browser.";
+    }
 
 
     return (

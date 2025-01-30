@@ -10,11 +10,12 @@ import { ChatMessage, ProgressItem } from './types';
 import SuggestedPrompts from './components/SuggestedPrompts';
 import WebgpuProgress from './components/WebgpuProgress';
 import ErrorModal from './components/modals/ErrorModal';
+import DeviceNotSupportedView from './components/DeviceNotSupportedView';
 
 export default function App() {
   const [selectedModel, setSelectedModel] = useState<string>('onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX');
   const [selectedQuantization, setSelectedQuantization] = useState<string>('q4f16');
-  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<{ title: string; prompt: string; }[]>([]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -40,6 +41,10 @@ export default function App() {
 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+
+  const [_, setActiveDownloads] = useState<Set<string>>(new Set());
+
+  const [isMobile, setIsMobile] = useState(false);
 
   const initializeModel = () => {
     if (!workerRef.current) return;
@@ -78,9 +83,10 @@ export default function App() {
         setReady(false);
         setIsInitializingWebgpu(false);
         setProgressItems(prev => [...prev, e.data]);
+        setActiveDownloads(prev => new Set(prev).add(e.data.file));
         break;
 
-      case 'progress': // Model Download Progress
+      case 'progress': // Model file download progress
         setProgressItems(
           prev => prev.map(item => {
             if (item.file === e.data.file) {
@@ -93,11 +99,17 @@ export default function App() {
 
       case 'done':
         setProgressItems([]);
-        setIsInitializingWebgpu(true);
+        setActiveDownloads(prev => {
+          const updated = new Set(prev);
+          updated.delete(e.data.file);
+          if (updated.size === 0) {
+            setIsInitializingWebgpu(true);
+          }
+          return updated;
+        });
         break;
 
       case 'ready':
-        console.log("ready: ", e.data);
         setReady(true);
         setIsInitializingWebgpu(false);
         break;
@@ -127,12 +139,10 @@ export default function App() {
         break;
 
       case 'complete':
-        console.log("complete: ", e.data);
         setDisabled(false);
         break;
 
       case 'error':
-        console.error("error: ", e.data.error);
         setDisabled(false);
         setErrorMessage(e.data.error || 'An unknown error occurred');
         setIsErrorModalOpen(true);
@@ -171,6 +181,17 @@ export default function App() {
       inputRef.current.focus();
     }
   }, [disabled, ready]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 450); // 768px is a common breakpoint for mobile
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleNewUserMessage = (event: React.FormEvent) => {
     event.preventDefault();
@@ -267,6 +288,10 @@ export default function App() {
       });
     }
   };
+
+  if (isMobile) {
+    return <DeviceNotSupportedView />;
+  }
 
   return (
     <div className="min-h-screen bg-amber-50 p-4">

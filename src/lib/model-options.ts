@@ -28,7 +28,7 @@ export interface ModelProfile {
     suggested_quantization: string;
     default_settings: ModelSettings;
     system_prompt: string;
-    suggested_prompts: string[];
+    suggested_prompts: { title: string; prompt: string; }[];
 }
 
 export const MODEL_PROFILES: ModelProfile[] = [
@@ -47,11 +47,11 @@ export const MODEL_PROFILES: ModelProfile[] = [
         },
         system_prompt: "You are a helpful AI assistant that provides accurate and concise responses.",
         suggested_prompts: [
-            "How far away is the sun?",
-            "What is the capital of France?",
-            "Tell me about John Von Neumann.",
-            "Write a short story.",
-            "What is the meaning of life?"
+            { title: "Reasoning Test (Basic)", prompt: "A sailor needs to transport a wolf, a sheep, and a cabbage across a river in a small boat. The boat can only carry the sailor and one item at a time. If left unattended, the wolf will eat the sheep, and the sheep will eat the cabbage. How can the sailor transport everything safely to the other side?" },
+            { title: "Reasoning Test (Advanced)", prompt: "A group of 100 people are standing in a circle. Every 10th person is killed, starting with the 10th person. How many people are left alive after 100 rounds?" },
+            { title: "Tell me about John Von Neumann.", prompt: "Tell me about John Von Neumann." },
+            { title: "Write a short story.", prompt: "Write a short story." },
+            { title: "What is the meaning of life?", prompt: "What is the meaning of life?" }
         ]
     },
     {
@@ -69,11 +69,11 @@ export const MODEL_PROFILES: ModelProfile[] = [
         },
         system_prompt: "You are a helpful assistant focused on providing concise and accurate information.",
         suggested_prompts: [
-            "How far away is the sun?",
-            "What is the capital of France?",
-            "Tell me about John Von Neumann.",
-            "Write a short story.",
-            "What is the meaning of life?"
+            { title: "How far away is the sun?", prompt: "How far away is the sun?" },
+            { title: "What is the capital of France?", prompt: "What is the capital of France?" },
+            { title: "Tell me about John Von Neumann.", prompt: "Tell me about John Von Neumann." },
+            { title: "Write a short story.", prompt: "Write a short story." },
+            { title: "What is the meaning of life?", prompt: "What is the meaning of life?" }
         ]
     },
     // {
